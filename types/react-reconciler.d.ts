@@ -1,11 +1,11 @@
 /**
  * TypeScript module augmentation for `react-reconciler`.
  *
- * React 19 does not yet export type definitions for the Reconciler package,
- * which causes TypeScript to error when Crucible UI imports it. This declaration
- * file provides minimal placeholder types that allow the Crucible UI host
- * configuration to compile successfully without depending on the official
- * `@types/react-reconciler` package.
+ * React reconciler does not yet export type definitions for the Reconciler
+ * package, which causes TypeScript to error when Crucible UI imports it. This
+ * declaration file provides minimal placeholder types that allow the Crucible
+ * UI host configuration to compile successfully without depending on the
+ * official `@types/react-reconciler` package.
  *
  * These types are intentionally generic and non-restrictive. They only serve
  * to describe the public surface required for Crucible UI’s internal usage:

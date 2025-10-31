@@ -2,89 +2,45 @@
  * @packageDocumentation
  * @module crucible-ui
  *
- * Crucible UI Core Module. This module exports the main Crucible UI API,
- * including component types, props, and the createElement function used
- * to construct Crucible elements from JSX. It serves as the entry point
- * for using Crucible UI in applications.
- */
-import type { ComponentType, ComponentProps } from "./core";
-import type { ReactElement } from "react";
-
-export * from "./core";
-
-/**
- * Crucible UI version of React.createElement.
- * 
- * This function is automatically called when JSX is used. It constructs a
- * Crucible component description (a React element) that the reconciler will
- * later instantiate and render via the Crucible host configuration.
+ * The root entry point of the Crucible UI framework.
  *
- * @param type The Crucible component class (e.g. View, Content).
- * @param props The component props object.
- * @param children Any child elements or text.
- * @returns A Crucible element compatible with React Reconciler.
- */
-function createElement(
-  type: ComponentType,
-  props: ComponentProps,
-  ...children: unknown[]
-): ReactElement<ComponentProps, ComponentType> {
-
-  // Merge children into props like React does
-  const normalizedProps: ComponentProps = {
-    ...props,
-    ...(children.length > 0
-      ? {
-        children: children.length === 1
-          ? children[0]
-          : children
-      }
-      : {})
-  };
-
-  // Return the standard React element shape
-  return {
-    $$typeof: Symbol.for('react.element'),
-    type,
-    key: normalizedProps.key ?? null,
-    ref: normalizedProps.ref ?? null,
-    props: normalizedProps,
-    _owner: null
-  } as ReactElement<ComponentProps, ComponentType>;
-}
-
-/**
- * Creates a React fragment element for Crucible UI. A fragment groups
- * multiple children without introducing an extra wrapping component. It
- * behaves identically to React.Fragment in JSX.
+ * This module re-exports the public surface of `crucible-ui`, which defines
+ * Crucible’s declarative component system.
  *
- * @param children The child elements or nodes to include in the fragment.
- * @param key Optional key used to uniquely identify the fragment.
- * @returns A React fragment element object.
+ * Crucible UI extends React’s reconciliation model with its own runtime element
+ * format, reconciler implementation, and component abstraction layer. While
+ * React remains responsible for scheduling, diffing, and reconciliation
+ * orchestration, Crucible replaces React’s rendering pipeline with its own
+ * component model.
+ *
+ * Crucible introduces an intermediate metadata layer that associates each JSX
+ * element with its corresponding Crucible component constructor. This enables
+ * Crucible’s reconciler to instantiate and manage components independently of
+ * React’s internal component resolution.
+ *
+ * The Crucible UI architecture is divided into two conceptual layers:
+ *
+ * 1. Elements are immutable data objects that describe the intended component
+ *    hierarchy, properties, and children. Elements are created by the JSX
+ *    factory and interpreted by the Crucible reconciler.
+ *
+ * 2. Components are executable entities that encapsulate state, logic, and
+ *    lifecycle management. Components are instantiated by the reconciler based
+ *    on the structure described by their corresponding elements.
+ *
+ * Crucible UI defines its own JSX factory, {@link crucible-ui.createElement},
+ * which is automatically invoked during JSX compilation. The build system
+ * rewrites all JSX expressions to use the injected alias {@link
+ * __Crucible_createElement} instead of React’s `createElement`.
+ *
+ * This indirection allows Crucible to enrich element objects with additional
+ * metadata, ensuring compatibility with its custom reconciler and rendering
+ * infrastructure. The injected metadata includes a reference to the original
+ * component constructor under the internal `__crucible_ctor` property.
+ *
+ * Crucible UI components extend the {@link Component} base class, which
+ * defines the common lifecycle structure for all Crucible widgets. Components
+ * declare their configuration through interfaces extending {@link ComponentProps},
+ * and manage runtime state through {@link ComponentState}.
  */
-function Fragment(
-  children: unknown[],
-  key: string | null = null
-): ReactElement {
-  return {
-    $$typeof: Symbol.for('react.element'),
-    type: Symbol.for('react.fragment'),
-    key,
-    ref: null,
-    props: { children },
-    _owner: null,
-  } as unknown as ReactElement;
-}
-
-export const Crucible = {
-  createElement,
-  Fragment,
-};
-
-export namespace Crucible {
-  export interface API {
-    log(message: string): void;
-  }
-}
-
-export default Crucible;
+export * from "./crucible-ui";

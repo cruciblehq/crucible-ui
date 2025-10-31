@@ -1,0 +1,12 @@
+{
+    "extends": "./tsconfig.base.json",
+    "compilerOptions": {
+        // Output
+        "outDir": "dist/esm-neutral/",
+        "sourceMap": true,
+        // Declaration generation (for npm consumption)
+        "declaration": true,
+        "declarationMap": true,
+        "emitDeclarationOnly": false
+    }
+}

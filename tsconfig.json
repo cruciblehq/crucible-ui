@@ -1,55 +1,9 @@
 {
+    "extends": "./tsconfig.base.json",
     "compilerOptions": {
-        "rootDir": "src",
-        "outDir": "dist",
-        "baseUrl": ".",
-        // Environment settings
-        "target": "ES2015",
-        "module": "ESNext",
-        // JSX support (preserve for custom build tools)
-        "jsx": "preserve",
-        // Output control
-        "sourceMap": true,
-        "declaration": true,
-        "declarationMap": true,
-        "incremental": true,
-        "removeComments": true,
-        "noEmitOnError": true,
-        // Type-checking strictness
-        "strict": true,
-        "noUncheckedIndexedAccess": true,
-        "exactOptionalPropertyTypes": true,
-        "noFallthroughCasesInSwitch": true,
-        "noImplicitOverride": true,
-        "noImplicitReturns": true,
-        "noPropertyAccessFromIndexSignature": true,
-        "noUnusedParameters": true,
-        "noUnusedLocals": true,
-        // Module and import behavior
-        "esModuleInterop": true,
-        "verbatimModuleSyntax": false,
-        "isolatedModules": true,
-        "moduleDetection": "force",
-        "resolveJsonModule": false,
-        "moduleResolution": "node",
-        // Error handling and diagnostics
-        "forceConsistentCasingInFileNames": true,
-        "allowUnreachableCode": false,
-        "noErrorTruncation": true,
-        "allowJs": false,
-        // Lib
-        "skipLibCheck": false,
-        "lib": [
-            "DOM",
-            "ES2015"
-        ]
-    },
-    "include": [
-        "src",
-        "types"
-    ],
-    "exclude": [
-        "node_modules",
-        "dist"
-    ],
+        "noEmit": true,
+        "declaration": false,
+        "sourceMap": false,
+        "declarationMap": false,
+    }
 }

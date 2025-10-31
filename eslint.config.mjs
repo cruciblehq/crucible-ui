@@ -4,25 +4,19 @@ import tsparser from '@typescript-eslint/parser';
 export default [
     {
         ignores: [
-            '**/node_modules/**',
-            '**/dist/**',
-            '**/*.js',
-            '**/*.mjs',
-            '**/*.cjs',
-            '**/*.d.ts'
+            'node_modules/**',
+            'dist/**',
         ],
     },
     {
-        files: ['**/*.ts', '**/*.tsx'],
+        files: ['src/**/*.{ts,tsx}'],
         languageOptions: {
             parser: tsparser,
             parserOptions: {
                 ecmaVersion: 'latest',
                 sourceType: 'module',
-                project: [
-                    './tsconfig.json',
-                    './packages/*/tsconfig.json'
-                ],
+                tsconfigRootDir: process.cwd(),
+                project: ['./tsconfig.base.json'],
             },
         },
         plugins: {

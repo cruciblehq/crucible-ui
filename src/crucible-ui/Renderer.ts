@@ -17,7 +17,7 @@ export interface Renderer<HostInstance, HostContainer, HostContext> {
     * @param rootContainer The root container being rendered into.
     * @returns The host context for the root of the tree.
     */
-    getRootHostContext(rootContainer: HostContainer): HostContext;
+    getRootHostContext(rootContainer: HostContainer): HostContext
 
     /**
      * Get the host context for a child component based on its parent context
@@ -35,7 +35,7 @@ export interface Renderer<HostInstance, HostContainer, HostContext> {
         parentHostContext: HostContext,
         type: ComponentType,
         rootContainer: HostContainer
-    ): HostContext;
+    ): HostContext
 
     /**
      * Creates a new instance of a component. This method is responsible for
@@ -50,7 +50,7 @@ export interface Renderer<HostInstance, HostContainer, HostContext> {
         component: Component,
         rootContainer: HostContainer,
         hostContext: HostContext
-    ): HostInstance;
+    ): HostInstance
 
     /**
      * Append an initial child to a parent host instance. This is called
@@ -59,59 +59,7 @@ export interface Renderer<HostInstance, HostContainer, HostContext> {
      * @param parent The parent host instance to append the child to.
      * @param child The child host instance to append.
      */
-    appendInitialChild(parent: HostInstance, child: HostInstance): void;
-
-    /**
-     * Called after creating an instance and appending all initial children,
-     * but before the instance is attached to the tree. Used to perform any
-     * final setup or initialization that requires all children to be present.
-     * Work here should be limited to setup that does not require the instance
-     * to be visible or part of the committed tree. Such work (e.g. focus,
-     * animation, etc.) must be deferred to commitMount.
-     *
-     * Typical work done here includes:
-     * - Attaching event listeners.
-     * - Setting attributes or layout properties that depend on children.
-     * - Performing lightweight state initialization on the host instance.
-     *
-     * Returns true if commitMount should be called afterwards.
-     *
-     * @param instance The component instance being finalized.
-     * @param type The component type.
-     * @param props The component props.
-     * @param rootContainer The root container.
-     * @param hostContext The host context.
-     * @returns True if commitMount should be called; otherwise, false.
-     */
-    finalizeInitialChildren(
-        instance: HostInstance,
-        type: ComponentType,
-        props: ComponentProps,
-        rootContainer: HostContainer,
-        hostContext: HostContext
-    ): boolean;
-
-    /**
-     * Prepare the host environment for committing updates to the component
-     * tree. This method is called before any changes are applied to the
-     * tree and should be used to preserve any necessary state in the host
-     * environment, such as scroll positions, focus states, or selection
-     * ranges. The preserved state can then be restored in resetAfterCommit.
-     *
-     * @param containerInfo The host container being updated.
-     */
-    prepareForCommit(containerInfo: HostContainer): void;
-
-    /**
-     * Reset the host environment after committing updates to the component
-     * tree. This method is called after all changes have been applied to
-     * the tree and should be used to restore any state that was preserved
-     * in prepareForCommit, such as scroll positions, focus states, or
-     * selection ranges.
-     *
-     * @param containerInfo The host container that was updated.
-     */
-    resetAfterCommit(containerInfo: HostContainer): void;
+    appendInitialChild(parent: HostInstance, child: HostInstance): void
 
     /**
      * Perform any necessary actions after a component has been mounted.
@@ -128,7 +76,7 @@ export interface Renderer<HostInstance, HostContainer, HostContext> {
         instance: HostInstance,
         type: ComponentType,
         props: ComponentProps
-    ): void;
+    ): void
 
     /**
      * Insert a child host instance before another child in a parent component.
@@ -143,7 +91,7 @@ export interface Renderer<HostInstance, HostContainer, HostContext> {
         parent: HostInstance,
         child: HostInstance,
         beforeChild: HostInstance
-    ): void;
+    ): void
 
     /**
      * Remove a child host instance from a parent component. This is called
@@ -152,7 +100,7 @@ export interface Renderer<HostInstance, HostContainer, HostContext> {
      * @param parent The parent instance to remove the child from.
      * @param child The child instance to remove.
      */
-    removeChild(parent: HostInstance, child: HostInstance): void;
+    removeChild(parent: HostInstance, child: HostInstance): void
 
     /**
      * Append a child host instance to a container. Called during mounting
@@ -164,7 +112,7 @@ export interface Renderer<HostInstance, HostContainer, HostContext> {
     appendChildToContainer(
         container: HostContainer,
         child: HostInstance
-    ): void;
+    ): void
 
     /**
      * Insert a child instance before another child in a container. Called
@@ -179,7 +127,7 @@ export interface Renderer<HostInstance, HostContainer, HostContext> {
         container: HostContainer,
         child: HostInstance,
         beforeChild: HostInstance
-    ): void;
+    ): void
 
     /**
      * Remove a child instance from a container. Called during unmounting
@@ -188,7 +136,7 @@ export interface Renderer<HostInstance, HostContainer, HostContext> {
      * @param container The host container to remove the child from.
      * @param child The child instance to remove.
      */
-    removeChildFromContainer(container: HostContainer, child: HostInstance): void;
+    removeChildFromContainer(container: HostContainer, child: HostInstance): void
 
     /**
      * Clear all content from a container. Called to remove all instances
@@ -196,5 +144,5 @@ export interface Renderer<HostInstance, HostContainer, HostContext> {
      *
      * @param container The host container to clear.
      */
-    clearContainer(container: HostContainer): void;
+    clearContainer(container: HostContainer): void
 }
