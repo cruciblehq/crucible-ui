@@ -1,0 +1,94 @@
+name: Release
+
+on:
+  push:
+    branches: [alpha, beta, rc, main]
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Commit version bumps, create tags, publish GH releases
+      issues: write # Close issues mentioned in commits
+      pull-requests: write # Comment on PRs with release info
+      id-token: write # npm provenance
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - name: Prepare build
+        run: |
+          npm ci
+          npm run lint
+
+      - name: Check build (no version)
+        run: |
+          npm run build
+          npm run clean
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_AUTHOR_NAME: "github-actions[bot]"
+          GIT_AUTHOR_EMAIL: "github-actions[bot]@users.noreply.github.com"
+          GIT_COMMITTER_NAME: "github-actions[bot]"
+          GIT_COMMITTER_EMAIL: "github-actions[bot]@users.noreply.github.com"
+        run: |
+          npx --yes \
+            -p semantic-release@^23.0.0 \
+            -p @semantic-release/changelog@^6.0.3 \
+            -p @semantic-release/commit-analyzer@^13.0.0 \
+            -p @semantic-release/git@^10.0.1 \
+            -p @semantic-release/github@^10.0.0 \
+            -p @semantic-release/npm@^12.0.0 \
+            -p @semantic-release/release-notes-generator@^14.0.0 \
+            semantic-release
+
+      - name: Build (versioned)
+        run: npm run build
+
+      - name: Get tag
+        id: get_tag
+        run: |
+          echo "tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
+
+      - name: Get release upload URL
+        id: get_upload_url
+        run: |
+          tag="${{ steps.get_tag.outputs.tag }}"
+          upload_url=$(gh api repos/${{ github.repository }}/releases --jq ".[] | select(.tag_name==\"$tag\") | .upload_url")
+          echo "upload_url=$upload_url" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Archive (zip)
+        run: zip -r crucible-ui.zip LICENSE CHANGELOG.md package.json dist/ types/
+
+      - name: Archive (tarball)
+        shell: bash
+        run: tar -czf crucible-ui.tar.gz LICENSE CHANGELOG.md package.json dist/ types/
+
+      - name: Pack (package tarball)
+        id: pack
+        run: echo "filename=$(npm pack)" >> $GITHUB_OUTPUT
+
+      - name: Upload npm package tarball
+        run: |
+          gh release upload "$TAG" crucible-ui.zip#"Release (zip)" --repo "$GITHUB_REPOSITORY"
+          gh release upload "$TAG" crucible-ui.tar.gz#"Release (tarball)" --repo "$GITHUB_REPOSITORY"
+          gh release upload "$TAG" "$NPM_TARBALL"#"Release (package tarball)" --repo "$GITHUB_REPOSITORY"
+        env:
+          TAG: ${{ steps.get_tag.outputs.tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TARBALL: ${{ steps.pack.outputs.filename }}
