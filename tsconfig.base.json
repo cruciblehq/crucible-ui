@@ -1,0 +1,48 @@
+{
+    "compilerOptions": {
+        // Environment
+        "target": "ES2015",
+        "lib": [
+            "ES2015",
+            "DOM"
+        ],
+        // Project structure
+        "rootDir": "src",
+        "baseUrl": ".",
+        // Module resolution
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "moduleDetection": "force",
+        "noEmitOnError": true,
+        "isolatedModules": true,
+        "verbatimModuleSyntax": false,
+        "esModuleInterop": false,
+        "resolveJsonModule": false,
+        // Strict type checking
+        "strict": true,
+        "noUncheckedIndexedAccess": true,
+        "exactOptionalPropertyTypes": true,
+        "noImplicitOverride": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "noPropertyAccessFromIndexSignature": true,
+        "forceConsistentCasingInFileNames": true,
+        "useUnknownInCatchVariables": true,
+        // Cleanliness
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "allowUnreachableCode": false,
+        // Library type checks
+        "skipLibCheck": false,
+        // Misc
+        "allowJs": false
+    },
+    "include": [
+        "src",
+        "types"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
+}

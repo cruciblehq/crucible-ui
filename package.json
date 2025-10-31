@@ -1,0 +1,72 @@
+{
+    "name": "@cruciblehq/ui",
+    "version": "0.0.0",
+    "description": "UI reconciler for the Crucible ecosystem.",
+    "private": false,
+    "sideEffects": false,
+    "type": "module",
+    "main": "./dist/esm-neutral/index.js",
+    "module": "./dist/esm-neutral/index.js",
+    "exports": {
+        ".": {
+            "types": "./dist/types/index.d.ts",
+            "browser": "./dist/esm-browser.min/index.js",
+            "default": "./dist/esm-neutral/index.js"
+        }
+    },
+    "files": [
+        "README.md",
+        "LICENSE",
+        "CHANGELOG.md",
+        "package.json",
+        "dist/types",
+        "dist/esm-neutral"
+    ],
+    "scripts": {
+        "build": "npm run build:types && npm run build:esm-neutral && npm run build:esm-browser && npm run build:esm-browser.min",
+        "build:types": "tsc -p tsconfig.types.json",
+        "build:esm-neutral": "tsc -p tsconfig.esm-neutral.json",
+        "build:esm-browser": "node esbuild.config.esm-browser.js",
+        "build:esm-browser.min": "node esbuild.config.esm-browser.min.js",
+        "check": "npm run check:noemit && npm run check:lint",
+        "check:noemit": "tsc -p tsconfig.json",
+        "check:lint": "eslint .",
+        "check:lint-fix": "eslint . --fix",
+        "watch": "tsc -p tsconfig.json --watch",
+        "clean": "rm -rf dist tsconfig.tsbuildinfo"
+    },
+    "peerDependencies": {
+        "react": ">=18",
+        "react-reconciler": "^0.29.0"
+    },
+    "devDependencies": {
+        "@types/react": "^18.2.44",
+        "esbuild": "^0.25.12",
+        "typescript": "^5.9.3",
+        "eslint": "^9.38.0",
+        "@typescript-eslint/eslint-plugin": "^8.46.3"
+    },
+    "keywords": [
+        "crucible",
+        "crucible-ui",
+        "ui",
+        "component",
+        "declarative",
+        "widget",
+        "react",
+        "reconciler"
+    ],
+    "author": "Crucible Inc.",
+    "license": "UNLICENSED",
+    "homepage": "https://github.com/cruciblehq/crucible-ui",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/cruciblehq/crucible-ui"
+    },
+    "bugs": {
+        "url": "https://github.com/cruciblehq/crucible-ui/issues"
+    },
+    "publishConfig": {
+        "access": "public"
+    }
+}
