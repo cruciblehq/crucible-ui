@@ -1,6 +1,5 @@
 /**
  * @packageDocumentation
- * @module crucible-ui/core/components/events
  * 
  * This module defines event interfaces used within Crucible UI.
  *
@@ -8,5 +7,4 @@
  * all event types.
  */
 export type * from './Event';
-export type * from './FocusEvent';
-export type * from './PressEvent';
+export type * from './TriggerEvent';

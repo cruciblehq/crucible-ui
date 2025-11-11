@@ -1,19 +1,19 @@
-import type { Component } from '../components';
+import type { Intent } from '../intents';
 
 /**
- * Couples a Crucible UI component instance with its primitive.
+ * Couples a Crucible UI intent instance with its primitive.
  * 
- * This pairing facilitates the management and synchronization of the
- * component with its underlying primitive representation.
+ * This pairing facilitates the management and synchronization of intents with
+ * their underlying primitive representations.
  *
  * @typeParam HostInstance - The primitive object created by the renderer.
  */
 export class Pair<HostInstance extends object> {
 
     /**
-     * The Crucible UI component instance.
+     * The Crucible UI intent instance.
      */
-    readonly component: Component;
+    readonly intent: Intent;
 
     /**
      * The associated primitive produced by the renderer.
@@ -21,76 +21,71 @@ export class Pair<HostInstance extends object> {
     readonly primitive: HostInstance;
 
     /**
-     * Creates a component/primitive pair.
+     * Creates a intent/primitive pair.
      *
-     * @param component - The component instance.
-     * @param primitive - The primitive associated with the component.
+     * @param intent - The intent instance.
+     * @param primitive - The primitive associated with the intent.
      */
     constructor(
-        component: Component,
+        intent: Intent,
         primitive: HostInstance
     ) {
-        this.component = component;
+        this.intent = intent;
         this.primitive = primitive;
     }
 }
 
 /**
- * Registry that maps components to their primitives and vice versa.
+ * Registry that maps intents to their primitives and vice versa.
  * 
  * This data structure maintains a two-way association between Crucible UI
- * component instances and their corresponding primitives created by the
+ * intent instances and their corresponding primitives created by the
  * renderer. It allows lookup in both directions, enabling synchronization
- * and management of component/primitive relationships.
+ * and management of intent/primitive relationships.
  *
  * @typeParam HostInstance - The primitive object created by the renderer.
  */
 export class Bridge<HostInstance extends object> {
 
     /**
-     * Primitive pair mapping.
-     * 
-     * Maps primitives to their associated component pairs.
+     * Maps primitives to their associated intent pairs.
      */
-    private readonly _primitiveToComponentMap: WeakMap<HostInstance, Pair<HostInstance>>;
+    private readonly _primitiveToIntentMap: WeakMap<HostInstance, Pair<HostInstance>>;
 
     /**
-     * Component pair mapping.
-     * 
-     * Maps components to their associated primitive pairs.
+     * Maps intents to their associated primitive pairs.
      */
-    private readonly _componentToPrimitiveMap: WeakMap<Component, Pair<HostInstance>>;
+    private readonly _intentToPrimitiveMap: WeakMap<Intent, Pair<HostInstance>>;
 
     /**
-     * Constructor.
-     * 
      * Initializes empty maps.
      */
     constructor() {
-        this._primitiveToComponentMap = new WeakMap<HostInstance, Pair<HostInstance>>();
-        this._componentToPrimitiveMap = new WeakMap<Component, Pair<HostInstance>>();
+        this._primitiveToIntentMap = new WeakMap<HostInstance, Pair<HostInstance>>();
+        this._intentToPrimitiveMap = new WeakMap<Intent, Pair<HostInstance>>();
     }
 
     /**
      * Registers a bi-directional association.
      *
-     * If either the component or primitive is already registered, the existing
+     * If either the intent or primitive are already registered, the existing
      * association will be overwritten.
      * 
-     * @param component - The component instance.
+     * @param intent - The intent instance.
      * @param primitive - The associated primitive.
+     * 
      * @returns The created pair.
      */
     set(
-        component: Component,
+        intent: Intent,
         primitive: HostInstance
     ): Pair<HostInstance> {
 
-        const pair = new Pair(component, primitive);
+        const pair = new Pair(intent, primitive);
 
         // Associate both ways
-        this._primitiveToComponentMap.set(primitive, pair);
-        this._componentToPrimitiveMap.set(component, pair);
+        this._primitiveToIntentMap.set(primitive, pair);
+        this._intentToPrimitiveMap.set(intent, pair);
 
         return pair;
     }
@@ -98,51 +93,68 @@ export class Bridge<HostInstance extends object> {
     /**
      * Unregisters a bi-directional association.
      *
-     * Both arguments must belong to the same pair. If either the component or
+     * Both arguments must belong to the same pair. If either the intent or
      * primitive does not match the registered pair, the association will not
      * be removed and `false` will be returned.
      *
-     * @param component - The component instance.
+     * @param intent - The intent instance.
      * @param primitive - The associated primitive.
      * @returns `true` if removed, `false` if no matching pair existed.
      */
     unset(
-        component: Component,
+        intent: Intent,
         primitive: HostInstance
     ): boolean {
 
         // Look up both ways
-        const componentPair = this._componentToPrimitiveMap.get(component);
-        const instancePair = this._primitiveToComponentMap.get(primitive);
+        const intentPair = this._intentToPrimitiveMap.get(intent);
+        const instancePair = this._primitiveToIntentMap.get(primitive);
 
         // Both must exist and match
-        if (!componentPair || !instancePair) return false;
-        if (componentPair !== instancePair) return false;
+        if (!intentPair || !instancePair) return false;
+        if (intentPair !== instancePair) return false;
 
         // Remove both ways
-        this._componentToPrimitiveMap.delete(component);
-        this._primitiveToComponentMap.delete(primitive);
+        this._intentToPrimitiveMap.delete(intent);
+        this._primitiveToIntentMap.delete(primitive);
 
         return true;
     }
 
     /**
-     * Gets the primitive associated with a component.
+     * Gets the primitive associated with an intent.
      * 
-     * @param component - The component instance.
+     * If the intent is not registered, an error is thrown.
+     * 
+     * @param intent - The intent instance.
      * @returns The primitive, or `undefined` if none is registered.
      */
-    getPrimitive(component: Component): HostInstance | undefined {
-        return this._componentToPrimitiveMap.get(component)?.primitive;
+    getPrimitive(intent: Intent): HostInstance {
+        const pair = this._intentToPrimitiveMap.get(intent);
+
+        if (!pair) {
+            throw new Error("No primitive registered for the given intent.");
+        }
+
+        return pair.primitive;
     }
 
     /**
-     * Gets the component associated with a primitive.
+     * Gets the intent associated with a primitive.
+     * 
+     * If the primitive is not registered, an error is thrown.
      *
      * @param primitive - The primitive.
-     * @returns The component, or `undefined` if none is registered.
+     * @returns The intent, or `undefined` if none is registered.
      */
-    getComponent(primitive: HostInstance): Component | undefined {
-        return this._primitiveToComponentMap.get(primitive)?.component;
+    getIntent(primitive: HostInstance): Intent {
+
+        const pair = this._primitiveToIntentMap.get(primitive);
+
+        if (!pair) {
+            throw new Error("No intent registered for the given primitive.");
+        }
+
+        return pair.intent;
     }
 }

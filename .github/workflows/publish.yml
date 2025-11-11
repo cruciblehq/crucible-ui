@@ -2,7 +2,7 @@ name: Publish to npm
 
 on:
   release:
-    types: [released]
+    types: [published]
 
 permissions:
   contents: read
@@ -18,18 +18,30 @@ jobs:
           node-version: 24
           registry-url: "https://registry.npmjs.org"
 
-      - name: Download release asset
+      - name: Download tarball
         run: |
-          ASSET_URL=$(gh release view ${{ github.event.release.tag_name }} --json assets -q '.assets[] | select(.name == "crucible-ui.zip") | .url')
-          curl -L -o crucible-ui.zip -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "$ASSET_URL"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Unzip artifact
-        run: unzip crucible-ui.zip -d crucible-ui
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="${TAG#v}"  # Remove 'v' prefix
+          TARBALL_NAME="cruciblehq-ui-${VERSION}.tgz"
+          curl -L -o "$TARBALL_NAME" "https://github.com/${{ github.repository }}/releases/download/$TAG/$TARBALL_NAME"
+          echo "TARBALL_NAME=$TARBALL_NAME" >> $GITHUB_ENV
 
       - name: Publish to npm
-        working-directory: crucible-ui
-        run: npm publish --provenance --access public
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+
+          # Determine npm tag based on git tag pattern
+          if [[ "$TAG" == *"-alpha."* ]]; then
+            NPM_TAG="alpha"
+          elif [[ "$TAG" == *"-beta."* ]]; then
+            NPM_TAG="beta"
+          elif [[ "$TAG" == *"-rc."* ]]; then
+            NPM_TAG="rc"
+          else
+            NPM_TAG="latest"
+          fi
+
+          echo "Publishing with npm tag: $NPM_TAG"
+          npm publish "$TARBALL_NAME" --provenance --access public --tag "$NPM_TAG"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
