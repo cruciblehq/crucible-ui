@@ -2,12 +2,16 @@
  * @packageDocumentation
  * @module crucible-ui/core/components/interface
  * 
- * This module defines interfaces related to the Crucible UI component
- * interaction with the host environment, specifically {@link API}.
+ * This module defines the logic related to Crucible UI's interaction with the
+ * host environment, specifically the interfaces for native platform integrations.
  * 
- * Crucible UI widgets operate within a SES sandbox for security and isolation.
- * The {@link API} interface defines the allowed methods for components to
- * interact with the host environment, bypassing the SES restrictions in a
- * controlled manner.
+ * {@link Renderer} and {@link Host} define the contracts required to implement
+ * a Crucible UI renderer for a specific platform (e.g., web, native). Hosts
+ * must also provide a {@link Manifest} that describes the widgets to render.
  */
-export type * from "./API";
+export type * from "./Context";
+export type * from "./intrinsics";
+export type * from "./Manifest";
+export type * from "./Ref";
+export type * from "./Renderer";
+export * from "./Host";

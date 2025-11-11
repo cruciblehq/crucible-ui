@@ -1,4 +1,4 @@
-import type { LayoutProps } from "../props/LayoutProps";
+import type { LayoutProps } from "../props";
 import {
     Container,
     type ContainerProps,

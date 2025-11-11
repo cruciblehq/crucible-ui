@@ -1,4 +1,4 @@
-import type { Ref } from '../refs';
+import type { Ref } from '../interface';
 import type {
     Component,
     ComponentProps,
@@ -7,6 +7,9 @@ import type {
     ContainerProps,
     ContainerState,
     ContainerType,
+    ContentProps,
+    ContentState,
+    ContentType
 } from '../components';
 
 /**
@@ -14,7 +17,7 @@ import type {
  *
  * Crucible elements are immutable descriptions of component instances,
  * analogous to React elements but designed for Crucible’s component model.
- * They are produced by element factory functions (e.g., `createElement`)
+ * They are produced by element factory functions (e.g., {@link createElement})
  * and consumed by the Crucible reconciler to construct live component instances.
  *
  * Crucible follows React’s element object shape for interoperability but
@@ -28,22 +31,22 @@ import type {
 type ElementBase<T extends abstract new (...args: any[]) => Component> = { // eslint-disable-line @typescript-eslint/no-explicit-any
 
     /**
-     * The React element type marker symbol. Identifies this object as a
-     * valid React-compatible element at runtime.
+     * The React element type marker symbol. Identifies this object as a valid
+     * React-compatible element at runtime.
      */
     readonly $$typeof: symbol;
 
     /**
-     * The Crucible component constructor for this element. Retained
-     * internally to instantiate the correct component class during
-     * reconciliation.
+     * The Crucible component constructor for this element. Retained internally
+     * to instantiate the correct component class during reconciliation.
      */
     readonly __crucible_ctor: T;
 
     /**
      * The public element type name. Always a string to ensure that React’s
      * reconciler treats Crucible elements as host primitives and passes
-     * them to Crucible’s custom renderer.
+     * them to Crucible’s custom renderer. The actual constructor is stored
+     * in `__crucible_ctor`.
      */
     readonly type: string;
 
@@ -57,15 +60,21 @@ type ElementBase<T extends abstract new (...args: any[]) => Component> = { // es
      * Optional reference to the live component instance once created. Used to
      * support ref forwarding.
      */
-    readonly ref?: Ref;
+    readonly ref?: Ref<Component>;
+
+    /**
+     * The props used to configure the component instance represented by
+     * the element. Derived from the component’s prop type definition.
+     */
+    readonly props: InstanceType<T>["props"];
 };
 
 /**
- * Represents a Crucible element describing a non-container component instance.
+ * Represents a Crucible element describing a component instance.
  *
- * This corresponds to the basic form of a JSX element (e.g., `<Text>`).
- * The element is immutable and contains all the information necessary
- * for the reconciler to create and manage the corresponding live component.
+ * This corresponds to the basic form of a JSX element (e.g., `<Input>`). The
+ * element is immutable and contains all the information necessary for the
+ * reconciler to create and manage the corresponding live component.
  *
  * @typeParam ComponentPropsT - The type of the props accepted by the component.
  * @typeParam ComponentStateT - The type of the state maintained by the component.
@@ -74,16 +83,8 @@ type ElementBase<T extends abstract new (...args: any[]) => Component> = { // es
 export type Element<
     ComponentPropsT extends ComponentProps = ComponentProps,
     ComponentStateT extends ComponentState = ComponentState,
-    ComponentT extends ComponentType<ComponentPropsT, ComponentStateT> = ComponentType<ComponentPropsT, ComponentStateT>
-> =
-    ElementBase<ComponentT> & {
-
-        /**
-         * The props used to configure the component instance represented by
-         * the element. Derived from the component’s prop type definition.
-         */
-        readonly props: InstanceType<ComponentT>["props"];
-    };
+    ComponentTypeT extends ComponentType<ComponentPropsT, ComponentStateT> = ComponentType<ComponentPropsT, ComponentStateT>
+> = ElementBase<ComponentTypeT>;
 
 /**
  * Represents a Crucible element describing a container component instance.
@@ -100,55 +101,44 @@ export type Element<
 export type ContainerElement<
     ContainerPropsT extends ContainerProps = ContainerProps,
     ContainerStateT extends ContainerState = ContainerState,
-    ContainerT extends ContainerType<ContainerPropsT, ContainerStateT> = ContainerType<ContainerPropsT, ContainerStateT>
-> =
-    ElementBase<ContainerT> & {
+    ContainerTypeT extends ContainerType<ContainerPropsT, ContainerStateT> = ContainerType<ContainerPropsT, ContainerStateT>
+> = ElementBase<ContainerTypeT> & {
 
-        /**
-         * The props of the container, including its immutable list of child
-         * elements. Each child element corresponds to another Crucible
-         * component in the tree.
-         */
-        readonly props: InstanceType<ContainerT>["props"] & {
-
-            /**
-             * The child elements contained within this container. Each child
-             * is itself a Crucible element representing another component.
-             *
-             * This is an unfortunate inheritance from React’s model where
-             * `children` are part of props, even though Crucible treats them
-             * as first-class entities in its reconciliation process.
-             */
-            readonly children: Element<typeof Component>[];
-        };
-    };
+    /**
+     * The child elements contained within this container. Each child
+     * is itself a Crucible element representing another component.
+     *
+     * This is an unfortunate inheritance from React’s model where
+     * `children` are part of props, even though Crucible treats them
+     * as first-class entities in its reconciliation process.
+     */
+    readonly children: Element<typeof Component>[];
+};
 
 /**
- * Represents a Crucible element that explicitly embeds its constructor type
- * in both the top-level and props. This form is used internally in Crucible’s
- * rendering pipeline to retain full type information about the element’s
- * constructor at every level.
- *
- * @typeParam T - The constructor type of the component represented by this element.
+ * Represents a Crucible element describing a content component instance.
+ * 
+ * Content components represent leaf nodes that encapsulate raw content,
+ * such as text or media. This element type captures the props specific to
+ * content components.
+ * 
+ * @typeParam ContentPropsT - The type of the props.
+ * @typeParam ContentStateT - The type of the state.
+ * @typeParam ContentTypeT - The constructor type of the content component.
  */
-export type ElementWithCtor<T extends abstract new (...args: any[]) => Component> = // eslint-disable-line @typescript-eslint/no-explicit-any
-    ElementBase<T> & {
+export type ContentElement<
+    ContentPropsT extends ContentProps = ContentProps,
+    ContentStateT extends ContentState = ContentState,
+    ContentTypeT extends ContentType<ContentPropsT, ContentStateT> = ContentType<ContentPropsT, ContentStateT>
+> = ElementBase<ContentTypeT> & {
 
-        /**
-         * The props of this element, including a duplicate `__crucible_ctor`
-         * field for internal reconciliation convenience.
-         */
-        readonly props: InstanceType<T>["props"] & {
-
-            /**
-             * The Crucible component constructor for this element. Retained
-             * internally to instantiate the correct component class during
-             * reconciliation, since the public `type` field is a string. This
-             * duplicate allows internal code to access the constructor without
-             * needing to reference the top-level element structure. This is
-             * a workaround for forcing React to treat Crucible components as
-             * host primitives.
-             */
-            readonly __crucible_ctor: T;
-        };
-    };
+    /**
+     * The content managed by this content component.
+     * 
+     * At the element level, this is a simple string representing the raw
+     * textual content. The actual rendering and interpretation of this
+     * content is handled by the corresponding content component instance
+     * at runtime (e.g., Text).
+     */
+    readonly content: string;
+};

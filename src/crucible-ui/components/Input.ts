@@ -11,15 +11,12 @@ import type {
 /**
  * Props for the {@link Input} component.
  *
- * Represents the interface of Crucible’s input component props. `InputProps`
- * extends the core {@link ComponentProps} with input props derived from {@link
+ * Extends the core {@link ComponentProps} with input props derived from {@link
  * BaseInputProps}. This enables the same component to represent different input
  * types, depending on the declared {@link InputType}.
  * 
- * Input types do not enforce validation rules; they serve as rendering
- * hints to guide how the input should behave and appear to the user.
- * 
- * Accepts UTF-8 encoded characters except control characters.
+ * Input types do not enforce validation rules; they serve as rendering hints
+ * to guide how the input should behave and appear to the user.
  * 
  * @see {@link InputType}
  * @see {@link BaseInputProps}
@@ -35,22 +32,19 @@ export interface InputProps extends ComponentProps, BaseInputProps {
     readonly type: InputType;
 
     /**
-     * The current value of the input.
+     * The value of the input.
      *
      * Represents the string form of the input’s content. All input variants
      * use a string representation for their internal state, regardless of
      * logical data type.
+     * 
+     * Accepts UTF-8 encoded characters except control characters.
      */
     readonly value?: string;
 }
 
 /**
  * State for the {@link Input} component.
- *
- * Represents the internal runtime state of the component. This base state
- * does not define any specific fields but serves as an extension point for
- * specialized inputs that need to track transient data, such as focus state,
- * cursor position, or validation results.
  */
 export interface InputState extends ComponentState { }
 

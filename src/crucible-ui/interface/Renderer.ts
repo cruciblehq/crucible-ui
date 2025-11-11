@@ -1,4 +1,5 @@
-import type { Component, ComponentType, ComponentProps } from './components';
+import type { Component, ComponentType, ComponentProps } from '../components';
+import type { Context } from '../interface';
 
 /**
  * Renderer interface defining the contract for rendering components into
@@ -6,7 +7,12 @@ import type { Component, ComponentType, ComponentProps } from './components';
  * to render and update components within the specified container types,
  * handling all necessary platform-specific rendering details.
  */
-export interface Renderer<HostInstance, HostContainer, HostContext> {
+export interface Renderer<
+    HostContainer extends object,
+    HostInstance extends object,
+    HostTextInstance extends object,
+    HostContext extends Context
+> {
 
     /**
     * Get the root host context for the given root container. This method
@@ -51,6 +57,15 @@ export interface Renderer<HostInstance, HostContainer, HostContext> {
         rootContainer: HostContainer,
         hostContext: HostContext
     ): HostInstance
+
+    /**
+     * 
+     */
+    createTextInstance(
+        text: string,
+        rootContainer: HostContainer,
+        hostContext: HostContext
+    ): HostTextInstance
 
     /**
      * Append an initial child to a parent host instance. This is called

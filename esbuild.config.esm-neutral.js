@@ -3,14 +3,13 @@ import { build } from "esbuild";
 await build({
     entryPoints: ["src/index.ts"],
     format: "esm",
-    platform: "browser",
+    platform: "neutral",
     bundle: true,
     sourcemap: true,
-    external: ["react"],
     define: {
         "process.env.NODE_ENV": '"development"',
     },
     tsconfig: "tsconfig.base.json",
-    outdir: "dist/esm-browser/",
+    outdir: "dist/esm-neutral/",
     outbase: "src",
 })

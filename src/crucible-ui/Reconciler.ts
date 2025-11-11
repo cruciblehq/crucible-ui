@@ -1,34 +1,22 @@
-/**
- * @module Reconciler
- *
- * Defines Crucible's host reconciler interface. This module provides
- * the bridge between the Crucible component model and React’s fiber
- * architecture. It exports factory functions, lifecycle handlers, and
- * utility types used by all platform renderers.
- *
- * @remarks
- * The module is internal to the Crucible UI runtime and should not be
- * imported by widgets or user code.
- *
- * @packageDocumentation
- */
 import type ReactReconciler from 'react-reconciler';
-import type { Renderer } from './Renderer';
-import type { ElementWithCtor } from './elements';
-import type { API } from './interface';
+import type { Renderer, Context } from './interface';
 import { Bridge } from './utils';
+import {
+    type Ctor,
+    ejectCrucibleCtor
+} from './elements';
 import {
     type ComponentType,
     type ConcreteComponentType,
     type ComponentProps,
-    type TextProps,
-    Component,
+    type Component,
+    type ComponentState,
     Container,
-    Text,
+    Content,
 } from './components';
 
 /**
- * Reconciler class that integrates React Reconciler with Crucible UI's
+ * Reconciler class that integrates React's reconciler with Crucible UI's
  * rendering system.
  * 
  * This class manages the reconciliation process, delegating platform-specific
@@ -36,20 +24,11 @@ import {
  * are created, updated, and managed within the Crucible UI environment.
  */
 export class Reconciler<
-    HostInstance extends object,
     HostContainer extends object,
-    HostContext
+    HostInstance extends object,
+    HostTextInstance extends object,
+    HostContext extends Context
 > {
-
-    /**
-     * The API instance provided to components for interacting with the host
-     * environment.
-     * 
-     * Components run within a confined SES environment and can only access the
-     * functionality explicitly exposed via this API object. This is passed
-     * down to components during instantiation.
-     */
-    private readonly api: API;
 
     /**
      * The renderer implementation used by this reconciler.
@@ -57,7 +36,12 @@ export class Reconciler<
      * The renderer is responsible for creating and managing host instances,
      * handling platform-specific rendering details.
      */
-    private readonly renderer: Renderer<HostInstance, HostContainer, HostContext>;
+    readonly #renderer: Renderer<
+        HostContainer,
+        HostInstance,
+        HostTextInstance,
+        HostContext
+    >;
 
     /**
      * The list of root components managed by the reconciler.
@@ -65,7 +49,7 @@ export class Reconciler<
      * This array tracks the top-level components that have been rendered
      * into the host container.
      */
-    private readonly rootComponents: Component[];
+    readonly #rootComponents: Component[];
 
     /**
      * Bridge mapping between component instances and their corresponding
@@ -74,18 +58,24 @@ export class Reconciler<
      * This bridge allows the reconciler to associate Crucible UI components
      * with their underlying host representations.
      */
-    private readonly bridge: Bridge<HostInstance>;
+    readonly #bridge: Bridge<HostInstance>;
 
     /**
-     * Creates a new Reconciler instance with the specified renderer.
+     * Creates a new Reconciler.
      * 
      * @param renderer The renderer implementation to use for host operations.
      */
-    constructor(api: API, renderer: Renderer<HostInstance, HostContainer, HostContext>) {
-        this.api = api;
-        this.renderer = renderer;
-        this.rootComponents = [];
-        this.bridge = new Bridge<HostInstance>();
+    constructor(
+        renderer: Renderer<
+            HostContainer,
+            HostInstance,
+            HostTextInstance,
+            HostContext
+        >
+    ) {
+        this.#renderer = renderer;
+        this.#rootComponents = [];
+        this.#bridge = new Bridge<HostInstance>();
     }
 
     /**
@@ -157,42 +147,74 @@ export class Reconciler<
      * component's props during instantiation. When false, it will create
      * separate text instances for any text content within the component.
      * 
+     * @remarks The `type` parameter is not used directly since Crucible
+     * components are instantiated via their constructors extracted from props.
+     * 
      * @param type The component type (constructor) being evaluated.
      * @param props The props of the component being evaluated.
      * @returns True if the component should receive text content directly;
      *          otherwise, false.
      */
     shouldSetTextContent(
-        type: ComponentType,
-        _props: ComponentProps
+        _type: ComponentType,
+        props: ComponentProps
     ): boolean {
-        return type.prototype instanceof Text;
+
+        // Eject __crucible_ctor
+        const [__crucible_ctor, _rest] = ejectCrucibleCtor<
+            ComponentProps,
+            ComponentState,
+            ConcreteComponentType
+        >(
+            props as ComponentProps & Ctor<ConcreteComponentType>
+        );
+
+        // Determine if the component is a Content or subclass
+        return Object.is(__crucible_ctor, Content) || __crucible_ctor.prototype instanceof Content;
     }
 
     /**
+     * Creates a new instance of a component.
      * 
+     * This method is responsible for instantiating the component and returning
+     * the corresponding host instance that represents it in the host environment.
+     * It maintains the mapping between the component and its host instance via
+     * the bridge and delegates native instance creation to the renderer.
+     * 
+     * @remarks The `type` parameter is not used directly since Crucible
+     * components are instantiated via their constructors extracted from props.
+     * 
+     * @param type The component type (constructor) to create an instance of.
+     * @param props The props to pass to the component constructor.
+     * @param rootContainer The root container being rendered into.
+     * @param hostContext The host context for the instance.
+     * @param internalHandle An internal handle used by React Reconciler. The
+     *                       type is unknown to prevent leaking react types.
+     * @returns The created host instance.
      */
-    createInstance<ComponentPropsT extends ComponentProps>(
-        _type: string,
-        props: ComponentPropsT,
+    createInstance(
+        _type: ComponentType,
+        props: ComponentProps,
         rootContainer: HostContainer,
         hostContext: HostContext,
-        _internalHandle: ReactReconciler.OpaqueHandle
+        _internalHandle: unknown
     ): HostInstance {
 
         // Eject __crucible_ctor
-        const { __crucible_ctor, ...rest } = props as unknown as ElementWithCtor<ConcreteComponentType>["props"];
-
-        if (typeof __crucible_ctor !== "function" || !(__crucible_ctor.prototype instanceof Component)) {
-            throw new TypeError("Missing or invalid Component constructor during instantiation.");
-        }
+        const [__crucible_ctor, rest] = ejectCrucibleCtor<
+            ComponentProps,
+            ComponentState,
+            ConcreteComponentType
+        >(
+            props as ComponentProps & Ctor<ConcreteComponentType>
+        );
 
         // Instantiate
-        const component = new __crucible_ctor(this.api, rest);
-        const instance = this.renderer.createInstance(component, rootContainer, hostContext);
+        const component = new __crucible_ctor(rest);
+        const instance = this.#renderer.createInstance(component, rootContainer, hostContext);
 
         // Associate
-        this.bridge.set(component, instance);
+        this.#bridge.set(component, instance);
 
         return instance;
     }
@@ -203,53 +225,27 @@ export class Reconciler<
      * 
      * This method is called when React encounters text nodes in JSX (e.g.,
      * <View>Hello</View>) and the parent component does not handle text content
-     * directly ({@see shouldSetTextContent}). The returned text instance will
-     * be used to manage and render the text content within the tree.
+     * directly. The returned text instance will be used to manage and render
+     * the text content within the tree.
      * 
      * @param text The text content to create an instance for.
      * @param rootContainer The root container being rendered into.
      * @param hostContext The host context for the text instance.
-     * @param internalHandle An internal handle used by React Reconciler.
+     * @param internalHandle An internal handle used by React Reconciler. The
+     *                       type is unknown to prevent leaking react types.
      * @returns The created text instance.
      */
     createTextInstance(
         text: string,
         rootContainer: HostContainer,
         hostContext: HostContext,
-        _internalHandle: ReactReconciler.OpaqueHandle
-    ): HostInstance {
-        return this.createInstance(
-            Text.name,
-            { content: text } as TextProps,
+        _internalHandle: unknown
+    ): HostTextInstance {
+        return this.#renderer.createTextInstance(
+            text,
             rootContainer,
             hostContext,
-            _internalHandle
         );
-    }
-
-    /**
-     * This function is called when a component's props change to determine
-     * if an update is needed. It's supposed to compare the old and new props
-     * and return an update payload describing the changes. However, in
-     * Crucible UI, props are immutable, so this function always returns null.
-     *
-     * @param instance The primitive instance being updated.
-     * @param type The type of the component.
-     * @param oldProps The previous props of the component.
-     * @param newProps The new props to update the component with.
-     * @param rootContainer The root container being rendered into.
-     * @param hostContext The host context for the component.
-     * @returns null.
-     */
-    prepareUpdate(
-        _instance: HostInstance,
-        _type: ComponentType,
-        _oldProps: ComponentProps,
-        _newProps: ComponentProps,
-        _rootContainer: HostContainer,
-        _hostContext: HostContext
-    ): null {
-        return null;
     }
 
     /**
@@ -262,7 +258,7 @@ export class Reconciler<
      * @returns The public instance exposed to refs.
      */
     getPublicInstance(instance: HostInstance): Component {
-        return this.bridge.getComponent(instance)!;
+        return this.#bridge.getComponent(instance)!;
     }
 
     /**
@@ -319,7 +315,7 @@ export class Reconciler<
      */
     appendChild(parent: HostInstance, child: HostInstance): void {
 
-        const component = this.bridge.getComponent(parent)!;
+        const component = this.#bridge.getComponent(parent);
 
         // Ensure parent is a container
         if (!(component instanceof Container)) {
@@ -328,11 +324,11 @@ export class Reconciler<
 
         // Replicate the relationship on the component model
         (component as Container).appendChild(
-            this.bridge.getComponent(child)!
+            this.#bridge.getComponent(child)!
         );
 
         // Delegate to the renderer
-        this.renderer.appendInitialChild(parent, child);
+        this.#renderer.appendInitialChild(parent, child);
     }
 
     /**
@@ -350,7 +346,7 @@ export class Reconciler<
         beforeChild: HostInstance
     ): void {
 
-        const component = this.bridge.getComponent(parent)!;
+        const component = this.#bridge.getComponent(parent);
 
         // Ensure parent is a container
         if (!(component instanceof Container)) {
@@ -359,12 +355,12 @@ export class Reconciler<
 
         // Replicate the relationship on the component model
         (component as Container).insertChildBefore(
-            this.bridge.getComponent(child)!,
-            this.bridge.getComponent(beforeChild)!
+            this.#bridge.getComponent(child)!,
+            this.#bridge.getComponent(beforeChild)!
         );
 
         // Delegate to the renderer
-        this.renderer.insertBefore(parent, child, beforeChild);
+        this.#renderer.insertBefore(parent, child, beforeChild);
     }
 
     /**
@@ -376,7 +372,7 @@ export class Reconciler<
      */
     removeChild(parent: HostInstance, child: HostInstance): void {
 
-        const component = this.bridge.getComponent(parent)!;
+        const component = this.#bridge.getComponent(parent);
 
         // Ensure parent is a container
         if (!(component instanceof Container)) {
@@ -385,11 +381,11 @@ export class Reconciler<
 
         // Replicate the relationship on the component model
         (component as Container).removeChild(
-            this.bridge.getComponent(child)!
+            this.#bridge.getComponent(child)!
         );
 
         // Delegate to the renderer
-        this.renderer.removeChild(parent, child);
+        this.#renderer.removeChild(parent, child);
     }
 
     /**
@@ -439,19 +435,18 @@ export class Reconciler<
      * be changed after instantiation, so this function is a no-op.
      *
      * @param instance The component instance being updated.
-     * @param updatePayload The payload describing what changed.
      * @param type The component type.
      * @param oldProps The previous props of the component.
      * @param newProps The new props to update the component with.
-     * @param internalHandle An internal handle used by React Reconciler.
+     * @param internalHandle An internal handle used by React Reconciler. The
+     *                       type is unknown to prevent leaking react types.
      */
     commitUpdate(
         _instance: HostInstance,
-        _updatePayload: null,
         _type: ComponentType,
         _oldProps: ComponentProps,
         _newProps: ComponentProps,
-        _internalHandle: ReactReconciler.OpaqueHandle
+        _internalHandle: unknown
     ): void {
 
         // No-op since props are immutable and cannot be changed after
@@ -473,7 +468,7 @@ export class Reconciler<
      * @param newText The new text content to set.
      */
     commitTextUpdate(
-        _textInstance: HostInstance,
+        _textInstance: HostTextInstance,
         _oldText: string,
         _newText: string
     ): void {
@@ -493,17 +488,18 @@ export class Reconciler<
      * @param instance The host instance that was mounted.
      * @param type The component type.
      * @param props The component props.
-     * @param internalHandle An internal handle used by React Reconciler.
+     * @param internalHandle An internal handle used by React Reconciler. The
+     *                       type is unknown to prevent leaking react types.
      */
     commitMount(
         instance: HostInstance,
         type: ComponentType,
         props: ComponentProps,
-        _internalHandle: ReactReconciler.OpaqueHandle
+        _internalHandle: unknown
     ): void {
 
         // Propagate to the renderer, but without the internal handle
-        this.renderer.commitMount(
+        this.#renderer.commitMount(
             instance,
             type,
             props
@@ -521,18 +517,13 @@ export class Reconciler<
         child: HostInstance
     ): void {
 
-        const component = this.bridge.getComponent(child)!;
-
-        // Ensure child is registered
-        if (component === undefined) {
-            throw new TypeError("Cannot append unknown component to container.");
-        }
+        const component = this.#bridge.getComponent(child);
 
         // Track root components
-        this.rootComponents.push(component);
+        this.#rootComponents.push(component);
 
         // Delegate to the renderer
-        this.renderer.appendChildToContainer(container, child);
+        this.#renderer.appendChildToContainer(container, child);
     }
 
     /**
@@ -550,32 +541,21 @@ export class Reconciler<
         beforeChild: HostInstance
     ): void {
 
-        const component = this.bridge.getComponent(child)!;
-
-        // Ensure child is registered
-        if (component === undefined) {
-            throw new TypeError("Cannot insert unknown component into container.");
-        }
-
-        const beforeComponent = this.bridge.getComponent(beforeChild)!;
-
-        // Ensure beforeChild is registered
-        if (beforeComponent === undefined) {
-            throw new TypeError("Cannot insert before unknown component in container.");
-        }
-
-        const index = this.rootComponents.indexOf(beforeComponent);
+        const component = this.#bridge.getComponent(child);
+        const beforeComponent = this.#bridge.getComponent(beforeChild);
 
         // Ensure beforeChild is a root component
+        const index = this.#rootComponents.indexOf(beforeComponent);
+
         if (index === -1) {
             throw new TypeError("The reference component to insert before is not a root component.");
         }
 
         // Track root components
-        this.rootComponents.splice(index, 0, component);
+        this.#rootComponents.splice(index, 0, component);
 
         // Delegate to the renderer
-        this.renderer.insertInContainerBefore(
+        this.#renderer.insertInContainerBefore(
             container,
             child,
             beforeChild
@@ -591,25 +571,20 @@ export class Reconciler<
      */
     removeChildFromContainer(container: HostContainer, child: HostInstance): void {
 
-        const component = this.bridge.getComponent(child)!;
-
-        // Ensure child is registered
-        if (component === undefined) {
-            throw new TypeError("Cannot remove unknown component from container.");
-        }
-
-        const index = this.rootComponents.indexOf(component);
+        const component = this.#bridge.getComponent(child);
 
         // Ensure child is a root component
+        const index = this.#rootComponents.indexOf(component);
+
         if (index === -1) {
             throw new TypeError("Cannot remove non-root component from container.");
         }
 
         // Remove from root components
-        this.rootComponents.splice(index, 1);
+        this.#rootComponents.splice(index, 1);
 
         // Delegate to the renderer
-        this.renderer.removeChildFromContainer(container, child);
+        this.#renderer.removeChildFromContainer(container, child);
     }
 
     /**
@@ -621,10 +596,10 @@ export class Reconciler<
     clearContainer(container: HostContainer): void {
 
         // Clear root components
-        this.rootComponents.length = 0;
+        this.#rootComponents.length = 0;
 
         // Delegate to the renderer
-        this.renderer.clearContainer(container);
+        this.#renderer.clearContainer(container);
     }
 
     /**
@@ -636,22 +611,9 @@ export class Reconciler<
      * @param renderer The renderer implementation to use for host operations.
      * @returns A HostConfig object for React Reconciler.
      */
-    get hostConfig(): ReactReconciler.HostConfig<
-        ComponentType,     // Constructor for component types
-        ComponentProps,    // Object describing component props
-        HostContainer,     // Top-level rendering target the renderer mounts into
-        HostInstance,      // Concrete host element representing components
-        HostInstance,      // Concrete host element representing text nodes
-        never,             // Host object used to hide/show Suspense boundaries
-        never,             // Host node type used for SSR hydration (not supported)
-        Component,         // The object exposed via ref.current
-        HostContext,       // Contextual info propagated down the host tree
-        never,             // The diff object describing updates (props are immutable)
-        never,             // Data structure for persistence mode (off-screen clones of children)
-        number,            // Return type of platform's timeout API
-        number             // Sentinel type for no timeout
-    > {
-        return {
+    get hostConfig(): unknown {
+
+        const hostConfig = {
 
             // Feature flags
             supportsMutation: this.supportsMutation,
@@ -660,12 +622,11 @@ export class Reconciler<
             isPrimaryRenderer: this.isPrimaryRenderer,
 
             // Core lifecycle methods
-            getRootHostContext: this.renderer.getRootHostContext.bind(this.renderer),
-            getChildHostContext: this.renderer.getChildHostContext.bind(this.renderer),
+            getRootHostContext: this.#renderer.getRootHostContext.bind(this.#renderer),
+            getChildHostContext: this.#renderer.getChildHostContext.bind(this.#renderer),
             shouldSetTextContent: this.shouldSetTextContent.bind(this),
             createInstance: this.createInstance.bind(this),
             createTextInstance: this.createTextInstance.bind(this),
-            prepareUpdate: this.prepareUpdate.bind(this),
             getPublicInstance: this.getPublicInstance.bind(this),
 
             // Mount methods (called during first render)
@@ -681,7 +642,7 @@ export class Reconciler<
             // Commit phase methods (called during updates)
             prepareForCommit: this.prepareForCommit.bind(this),
             resetAfterCommit: this.resetAfterCommit.bind(this),
-            commitUpdate: this.commitUpdate.bind(this),         // No-op
+            commitUpdate: this.commitUpdate.bind(this), // No-op
             commitTextUpdate: this.commitTextUpdate.bind(this), // No-op
             commitMount: this.commitMount.bind(this),
 
@@ -696,7 +657,52 @@ export class Reconciler<
             unhideInstance: notSupportedYet,
             hideTextInstance: notSupportedYet,
             unhideTextInstance: notSupportedYet,
-        };
+
+            // Others
+            NotPendingTransition: null,
+            HostTransitionContext: {} as unknown, //as ReactReconciler.ReactContext<never>,
+            noTimeout: 0,
+            preparePortalMount: notSupportedYet,
+            scheduleTimeout: notSupportedYet as unknown as (_fn: (...args: unknown[]) => unknown, _delay?: number) => number,
+            cancelTimeout: notSupportedYet as unknown as (_id: number) => void,
+            getInstanceFromNode: notSupportedYet as unknown, //as (_node: any) => ReactReconciler.Fiber | null | undefined, // eslint-disable-line @typescript-eslint/no-explicit-any
+            beforeActiveInstanceBlur: notSupportedYet,
+            afterActiveInstanceBlur: notSupportedYet,
+            prepareScopeUpdate: notSupportedYet as unknown as (_scopeInstance: any, _instance: any) => void, // eslint-disable-line @typescript-eslint/no-explicit-any
+            getInstanceFromScope: notSupportedYet as unknown as (_scopeInstance: any) => HostInstance | null, // eslint-disable-line @typescript-eslint/no-explicit-any
+            detachDeletedInstance: notSupportedYet as unknown as (_node: HostInstance) => void,
+            setCurrentUpdatePriority: notSupportedYet as unknown, // as (_newPriority: ReactReconciler.EventPriority) => void,
+            getCurrentUpdatePriority: notSupportedYet as unknown, // as () => ReactReconciler.EventPriority,
+            resolveUpdatePriority: notSupportedYet as unknown, // as () => ReactReconciler.EventPriority,
+            resetFormInstance: notSupportedYet as unknown as (_form: never) => void,
+            requestPostPaintCallback: notSupportedYet as unknown as (_callback: (time: number) => void) => void,
+            shouldAttemptEagerTransition: notSupportedYet as unknown as () => boolean,
+            trackSchedulerEvent: notSupportedYet as unknown as () => void,
+            resolveEventType: notSupportedYet as unknown as () => null | string,
+            resolveEventTimeStamp: notSupportedYet as unknown as () => number,
+            maySuspendCommit: notSupportedYet as unknown as (_type: ComponentType, _props: ComponentProps) => boolean,
+            preloadInstance: notSupportedYet as unknown as (_type: ComponentType, _props: ComponentProps) => boolean,
+            startSuspendingCommit: notSupportedYet as unknown as () => void,
+            suspendInstance: notSupportedYet as unknown as (_type: ComponentType, _props: ComponentProps) => void,
+            waitForCommitToBeReady: notSupportedYet as unknown as () => ((initiateCommit: (...args: unknown[]) => unknown) => (...args: unknown[]) => unknown) | null
+        } as ReactReconciler.HostConfig<
+            ComponentType,     // Constructor for component types
+            ComponentProps,    // Object describing component props
+            HostContainer,     // Top-level rendering target the renderer mounts into
+            HostInstance,      // Host element representing components
+            HostTextInstance,  // Host element representing text nodes
+            never,             // Host object used to hide/show Suspense boundaries
+            never,             // Host node type used for SSR hydration (not supported)
+            never,             // Host object used for form controls (not supported)
+            Component,         // The object exposed via ref.current
+            HostContext,       // Contextual info propagated down the host tree
+            never,             // ChildSet type for persistence (not supported)
+            number,            // Return type of platform's timeout API
+            number,            // Sentinel type for no timeout
+            never              // Transition status (not used)
+        >;
+
+        return hostConfig as unknown;
     }
 }
 

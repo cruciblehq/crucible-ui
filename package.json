@@ -1,5 +1,5 @@
 {
-    "name": "@cruciblehq/ui",
+    "name": "@crucible/ui",
     "version": "0.0.0",
     "description": "UI reconciler for the Crucible ecosystem.",
     "private": false,
@@ -10,7 +10,6 @@
     "exports": {
         ".": {
             "types": "./dist/types/index.d.ts",
-            "browser": "./dist/esm-browser.min/index.js",
             "default": "./dist/esm-neutral/index.js"
         }
     },
@@ -23,28 +22,27 @@
         "dist/esm-neutral"
     ],
     "scripts": {
-        "build": "npm run build:types && npm run build:esm-neutral && npm run build:esm-browser && npm run build:esm-browser.min",
+        "build": "npm run build:types && npm run build:esm-neutral",
         "build:types": "tsc -p tsconfig.types.json",
-        "build:esm-neutral": "tsc -p tsconfig.esm-neutral.json",
-        "build:esm-browser": "node esbuild.config.esm-browser.js",
-        "build:esm-browser.min": "node esbuild.config.esm-browser.min.js",
+        "build:esm-neutral": "node esbuild.config.esm-neutral.js",
         "check": "npm run check:noemit && npm run check:lint",
-        "check:noemit": "tsc -p tsconfig.json",
+        "check:noemit": "tsc -p tsconfig.noemit.json",
         "check:lint": "eslint .",
         "check:lint-fix": "eslint . --fix",
-        "watch": "tsc -p tsconfig.json --watch",
+        "watch": "tsc -p tsconfig.noemit.json --watch",
         "clean": "rm -rf dist tsconfig.tsbuildinfo"
     },
-    "peerDependencies": {
-        "react": ">=18",
+    "dependencies": {
+        "react": "^18.2.0",
         "react-reconciler": "^0.29.0"
     },
     "devDependencies": {
         "@types/react": "^18.2.44",
-        "esbuild": "^0.25.12",
+        "@types/react-reconciler": "^0.32.3",
+        "@typescript-eslint/eslint-plugin": "^8.46.3",
         "typescript": "^5.9.3",
-        "eslint": "^9.38.0",
-        "@typescript-eslint/eslint-plugin": "^8.46.3"
+        "esbuild": "^0.25.12",
+        "eslint": "^9.38.0"
     },
     "keywords": [
         "crucible",

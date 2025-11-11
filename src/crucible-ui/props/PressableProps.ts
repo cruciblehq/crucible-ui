@@ -1,8 +1,7 @@
-import type { PressEvent } from '../events';
+import { type PressEvent } from "../events";
 
 /**
- * Defines props for components that respond to press interactions, such as
- * buttons or other interactive elements.
+ * Defines the properties accepted by {@link Pressable} components.
  */
 export interface PressableProps {
 

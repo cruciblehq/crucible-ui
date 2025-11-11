@@ -129,20 +129,37 @@ export class Bridge<HostInstance extends object> {
     /**
      * Gets the primitive associated with a component.
      * 
+     * If the component is not registered, an error is thrown.
+     * 
      * @param component - The component instance.
      * @returns The primitive, or `undefined` if none is registered.
      */
-    getPrimitive(component: Component): HostInstance | undefined {
-        return this._componentToPrimitiveMap.get(component)?.primitive;
+    getPrimitive(component: Component): HostInstance {
+        const pair = this._componentToPrimitiveMap.get(component);
+
+        if (!pair) {
+            throw new Error("No primitive registered for the given component.");
+        }
+
+        return pair.primitive;
     }
 
     /**
      * Gets the component associated with a primitive.
+     * 
+     * If the primitive is not registered, an error is thrown.
      *
      * @param primitive - The primitive.
      * @returns The component, or `undefined` if none is registered.
      */
-    getComponent(primitive: HostInstance): Component | undefined {
-        return this._primitiveToComponentMap.get(primitive)?.component;
+    getComponent(primitive: HostInstance): Component {
+
+        const pair = this._primitiveToComponentMap.get(primitive);
+
+        if (!pair) {
+            throw new Error("No component registered for the given primitive.");
+        }
+
+        return pair.component;
     }
 }

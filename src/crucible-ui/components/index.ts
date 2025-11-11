@@ -8,10 +8,10 @@
  * This module includes base component classes as well as specific component
  * implementations like buttons, text inputs, and containers.
  */
-export type * from './Composite';
 export * from './Button';
 export * from './Component';
 export * from './Container';
+export * from './Content';
 export * from './Fragment';
 export * from './Input';
 export * from './Text';

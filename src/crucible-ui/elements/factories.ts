@@ -1,4 +1,13 @@
-import type { Element, ContainerElement, ElementWithCtor } from './Element';
+import type {
+    Element,
+    ContainerElement,
+    ContentElement
+} from './Element';
+import {
+    type Composite,
+    type CompositeProps,
+    isComposite
+} from './Composite';
 import {
     type ConcreteContainerType,
     type ConcreteComponentType,
@@ -6,11 +15,34 @@ import {
     type ContainerState,
     type ComponentProps,
     type ComponentState,
-    type Composite,
-    type CompositeProps,
-    Container,
+    type ContentProps,
+    type ContentState,
+    type ContentType,
     Component,
+    Container,
+    Content,
 } from "../components";
+
+/**
+ * Represents a props object that includes Crucible’s internal constructor
+ * reference. This is used internally to retain type information about the
+ * component constructor during reconciliation.
+ *
+ * @typeParam T - The constructor type of the component.
+ */
+export interface Ctor<
+    T extends new (...args: any[]) => Component // eslint-disable-line @typescript-eslint/no-explicit-any
+> {
+
+    /**
+     * The Crucible component constructor for the component associated with
+     * this props. Retained internally to instantiate the correct component
+     * class during reconciliation, since the public `type` field is a string.
+     * This is a workaround for forcing React to treat Crucible components as
+     * host primitives.
+     */
+    readonly __crucible_ctor: T;
+}
 
 /**
  * Injects Crucible’s internal constructor reference into a props object.
@@ -21,11 +53,13 @@ import {
  * compatibility, which hides the actual class reference that the Crucible
  * reconciler needs during instantiation.
  *
- * @typeParam ComponentPropsT - The type of the props accepted by the component.
- * @typeParam ComponentStateT - The type of the state maintained by the component.
+ * @typeParam ComponentPropsT - The type of props.
+ * @typeParam ComponentStateT - The type of state.
  * @typeParam ComponentTypeT - The constructor type of the component.
+ * 
  * @param type - The constructor of the Crucible component.
  * @param props - The props for the component instance.
+ * 
  * @returns A new props object including `__crucible_ctor`.
  */
 function injectCrucibleCtor<
@@ -34,12 +68,55 @@ function injectCrucibleCtor<
     ComponentTypeT extends ConcreteComponentType<ComponentPropsT, ComponentStateT>
 >(
     type: ComponentTypeT,
-    props: InstanceType<ComponentTypeT>["props"]
-): ElementWithCtor<ComponentTypeT>["props"] {
+    props: ComponentPropsT
+): ComponentPropsT & Ctor<ComponentTypeT> {
+
+    // This is a security measure to prevent callers from overwriting the
+    // internal constructor reference. If __crucible_ctor was defined in the
+    // original props, it could indicate an attempt to make Crucible use a
+    // different component class than intended, which could lead to
+    // unpredictable behavior (e.g., inject code to run outside the SES sandbox).
+    if (props && "__crucible_ctor" in props) {
+        throw new Error("Props object must not already contain '__crucible_ctor'.");
+    }
+
     return {
-        __crucible_ctor: type,
         ...props,
+        __crucible_ctor: type,
     };
+}
+
+/**
+ * Ejects Crucible’s internal constructor reference from a props object.
+ * 
+ * This function removes the `__crucible_ctor` field from a props object,
+ * returning the original component constructor along with a clean props object.
+ * 
+ * @typeParam ComponentPropsT - The type of props.
+ * @typeParam ComponentStateT - The type of state.
+ * @typeParam ComponentTypeT - The constructor type of the component.
+ * 
+ * @param props - The props object containing `__crucible_ctor`.
+ * 
+ * @returns A tuple with the component constructor and cleaned props.
+ */
+export function ejectCrucibleCtor<
+    ComponentPropsT extends ComponentProps,
+    ComponentStateT extends ComponentState,
+    ComponentTypeT extends ConcreteComponentType<ComponentPropsT, ComponentStateT>
+>(
+    props: ComponentPropsT & Ctor<ComponentTypeT>
+): [ComponentTypeT, ComponentPropsT] {
+
+    // Eject __crucible_ctor
+    const { __crucible_ctor, ...rest } = props;
+
+    // Validate
+    if (typeof __crucible_ctor !== "function" || !(__crucible_ctor.prototype instanceof Component)) {
+        throw new TypeError("Missing or invalid Component constructor during instantiation.");
+    }
+
+    return [__crucible_ctor, rest as unknown as ComponentPropsT];
 }
 
 /**
@@ -53,10 +130,11 @@ function injectCrucibleCtor<
  * @typeParam ContainerPropsT - The type of the props accepted by the container.
  * @typeParam ContainerStateT - The type of the state maintained by the container.
  * @typeParam ContainerTypeT - The container component type.
- * @param api - The API instance provided to components.
+ * 
  * @param type - The class constructor for the container component.
  * @param props - The props object defining the container’s configuration.
  * @param children - The child elements contained within this container.
+ * 
  * @returns A Crucible container element.
  */
 export function createElement<
@@ -70,19 +148,48 @@ export function createElement<
 ): ContainerElement<ContainerPropsT, ContainerStateT, ContainerTypeT>;
 
 /**
- * Creates a Crucible element representing a non-container component.
+ * Creates a Crucible element representing a content component.
  *
- * Non-container components cannot have children. The resulting element
- * conforms to React’s element structure, making it recognizable by React’s
- * fiber system while maintaining Crucible-specific metadata for the
- * Crucible reconciler.
+ * Content components encapsulate raw content, such as text. This overload
+ * includes a `content` parameter to specify the content managed by the
+ * component. The resulting element conforms to React’s element shape while
+ * embedding Crucible-specific metadata used by the reconciler.
+ * 
+ * @typeParam ContentPropsT - The type of the props.
+ * @typeParam ContentStateT - The type of the state.
+ * @typeParam ContentTypeT - The content component type.
+ * 
+ * @param type - The class constructor for the content component.
+ * @param props - The props object defining the component’s configuration.
+ * @param content - The raw content managed by the content component.
+ * 
+ * @returns A Crucible content element.
+ */
+export function createElement<
+    ContentPropsT extends ContentProps,
+    ContentStateT extends ContentState,
+    ContentTypeT extends ContentType<ContentPropsT, ContentStateT>
+>(
+    type: ContentTypeT,
+    props: InstanceType<ContentTypeT>["props"],
+    content: string
+): ContentElement<ContentPropsT, ContentStateT, ContentTypeT>;
+
+/**
+ * Creates a Crucible element representing a component.
+ *
+ * Non-container, non-content components cannot have children or content. The
+ * resulting element conforms to React’s element structure, making it
+ * recognizable by React’s fiber system while maintaining Crucible-specific
+ * metadata for the Crucible reconciler.
  *
  * @typeParam ComponentTypeT - The non-container component type.
- * @typeParam ComponentPropsT - The type of the props accepted by the component.
- * @typeParam ComponentStateT - The type of the state maintained by the component.
- * @param api - The API instance provided to components.
+ * @typeParam ComponentPropsT - The type of the props.
+ * @typeParam ComponentStateT - The type of the state.
+ * 
  * @param type - The class constructor for the component.
  * @param props - The props object defining the component’s configuration.
+ * 
  * @returns A Crucible element describing the component instance.
  */
 export function createElement<
@@ -102,12 +209,21 @@ export function createElement<
  *
  * @param type - The composite callback function.
  * @param props - The props for the composite.
+ * 
  * @returns The rendered Crucible element.
  */
 export function createElement(
     type: Composite,
-    props: CompositeProps
-): Element<ConcreteComponentType>;
+    props: CompositeProps,
+    ...children: unknown[]
+): Element<
+    ComponentProps,
+    ComponentState,
+    ConcreteComponentType<
+        ComponentProps,
+        ComponentState
+    >
+>;
 
 /**
  * Core implementation for Crucible’s `createElement` factory.
@@ -120,21 +236,28 @@ export function createElement(
  * The reconciler later interprets the resulting element’s metadata to create
  * live component instances.
  *
- * @param api - The API instance provided to components.
  * @param type - The class constructor for the component.
  * @param props - The props object defining the component’s configuration.
  * @param children - Optional child elements (for container components).
+ * 
  * @returns A Crucible element representing the component instance.
  */
 export function createElement(
     type: ConcreteComponentType | Composite,
-    props: InstanceType<ConcreteComponentType>["props"],
-    ...children: Element<typeof Component>[]
-): Element<ConcreteComponentType> {
+    props: ComponentProps | CompositeProps,
+    ...rest: unknown[]
+): Element<
+    ComponentProps,
+    ComponentState,
+    ConcreteComponentType<
+        ComponentProps,
+        ComponentState
+    >
+> {
 
     // Composites are called immediately to produce their element subtree.
     if (isComposite(type)) {
-        return type(props);
+        return type(props as CompositeProps);
     }
 
     // Ensure the Crucible constructor reference is embedded in props.
@@ -144,8 +267,19 @@ export function createElement(
     if (type.prototype instanceof Container) {
         props = {
             ...props,
-            children: ([] as Element<typeof Component>[]).concat(...children),
+            children: ([] as Element<typeof Component>[]).concat(
+                ...rest as Element<typeof Component>[]
+            ),
         } as unknown as ContainerProps;
+    }
+
+    // Content components accept raw content
+    else if (type.prototype instanceof Content) {
+        const [content] = rest as [string];
+        props = {
+            ...props,
+            content,
+        } as unknown as ContentProps;
     }
 
     // Return a React-compatible element object with Crucible metadata.
@@ -154,19 +288,12 @@ export function createElement(
         type: type.name,
         ref: null,
         props,
-    } as Element<ConcreteComponentType>;
-}
-/**
- * Type guard to determine if a type is a Composite.
- *
- * This type check returns whether the provided type is a {@link Composite}
- * or a {@link ConcreteComponentType}.
- *
- * @param type - The type to check.
- * @returns `true` if the type is a Composite; `false` otherwise.
- */
-function isComposite(type: ConcreteComponentType | Composite): type is Composite {
-    return !type.prototype || !(type.prototype instanceof Component);
+    } as Element<
+        ComponentProps, ComponentState, ConcreteComponentType<
+            ComponentProps,
+            ComponentState
+        >
+    >;
 }
 
 /**

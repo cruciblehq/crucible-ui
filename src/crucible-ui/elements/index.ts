@@ -27,5 +27,5 @@
  * and full compatibility with the Crucible reconciler.
  */
 export type * from './Element';
-export type * from './intrinsics';
+export * from './Composite';
 export * from './factories';

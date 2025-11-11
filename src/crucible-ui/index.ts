@@ -9,9 +9,7 @@
  */
 export * from "./components";
 export * from "./elements";
+export * from "./interface";
 export type * from "./events";
-export type * from "./interface";
 export type * from "./props";
-export type * from "./refs";
 export type * from "./Reconciler";
-export type * from "./Renderer";
