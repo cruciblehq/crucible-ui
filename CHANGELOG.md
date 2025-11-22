@@ -1,6 +1,13 @@
 # [0.1.0-alpha.2](https://github.com/cruciblehq/crucible-ui/compare/v0.1.0-alpha.1...v0.1.0-alpha.2) (2025-11-22)
 
 
+### Bug Fixes
+
+* minor corrections on README ([320bfd6](https://github.com/cruciblehq/crucible-ui/commit/320bfd643ccb31236583d666fdf326acfd068112))
+
+# [0.1.0-alpha.2](https://github.com/cruciblehq/crucible-ui/compare/v0.1.0-alpha.1...v0.1.0-alpha.2) (2025-11-22)
+
+
 ### Features
 
 * add host interface ([f0242af](https://github.com/cruciblehq/crucible-ui/commit/f0242af1bedf2f1ce82f59d9a3182d070075708a))
