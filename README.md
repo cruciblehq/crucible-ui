@@ -10,7 +10,7 @@ runtime and features.
 
 ## Installation
 
-[crux]([http://](https://example.com/) is Crucible's bootstrapping and build
+[crux](https://github.com/cruciblehq/crux) is Crucible's bootstrapping and build
 tool and is the preferred way to install `@cruciblehq/ui`:
 
 ```sh
@@ -35,20 +35,6 @@ This produces one build variant, available under `dist/esm-neutral`.
 
 An additional `types` build is generated under `dist/types`, containing the
 TypeScript declaration files (`.d.ts`) for all public modules.
-
-## Development
-
-After cloning the repository, install dependencies:
-
-```sh
-npm install
-```
-
-Check builds and lint:
-
-```sh
-npm run check
-```
 
 ## License
 

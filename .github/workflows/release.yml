@@ -8,6 +8,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    environment: npm
     permissions:
       contents: write # Commit version bumps, create tags, publish GH releases
       issues: write # Close issues mentioned in commits
@@ -72,7 +73,7 @@ jobs:
         id: pack
         run: echo "filename=$(npm pack)" >> $GITHUB_OUTPUT
 
-      - name: Upload npm package tarball
+      - name: Upload release assets
         run: |
           gh release upload "$TAG" cruciblehq-ui.zip#"Release (zip)" --repo "$GITHUB_REPOSITORY"
           gh release upload "$TAG" cruciblehq-ui.tar.gz#"Release (tarball)" --repo "$GITHUB_REPOSITORY"
